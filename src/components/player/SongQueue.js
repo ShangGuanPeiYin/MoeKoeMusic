@@ -10,6 +10,7 @@ export default function useSongQueue(t, musicQueueStore, queueList = null) {
         img: '',
         url: '',
         hash: '',
+        mxid: '',
         playHash: '',
         resolvedQuality: '',
         qualityLabel: '',

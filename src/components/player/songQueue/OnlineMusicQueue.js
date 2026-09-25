@@ -84,6 +84,9 @@ export default function useOnlineMusicQueue(t, musicQueueStore, currentSong, tim
 
         try {
             clearTimeout(timeoutId.value);
+            const previousHash = currentSong.value.hash;
+            const previousMxid = currentSong.value.mxid || '';
+            let resolvedMxid = '';
             currentSong.value.author = author;
             currentSong.value.name = name;
             currentSong.value.img = img;
@@ -92,6 +95,7 @@ export default function useOnlineMusicQueue(t, musicQueueStore, currentSong, tim
             currentSong.value.resolvedQuality = '';
             currentSong.value.qualityLabel = '';
             currentSong.value.qualityOptions = [];
+            currentSong.value.mxid = '';
 
             console.log('[SongQueue] 获取歌曲:', hash, name);
 
@@ -125,6 +129,9 @@ export default function useOnlineMusicQueue(t, musicQueueStore, currentSong, tim
                     if (qualityOptions.length === 0) {
                         const privilegeResponse = await get(`/privilege/lite`, { hash: hash });
                         if (isStaleRequest()) return { stale: true };
+                        const privilegeItems = Array.isArray(privilegeResponse?.data) ? privilegeResponse.data : [];
+                        const matched = privilegeItems.find(item => item && item.hash === hash) || privilegeItems[0];
+                        resolvedMxid = matched?.album_audio_id ? String(matched.album_audio_id) : '';
                         qualityOptions = getQualityOptions(privilegeResponse);
                     }
                     candidates = getPrivilegeCandidates(qualityOptions, q, hash);
@@ -207,10 +214,15 @@ export default function useOnlineMusicQueue(t, musicQueueStore, currentSong, tim
                 return { error: true };
             }
 
+            // 解析 mxid（专辑音频 id）：优先本次拿到，其次同曲缓存（如仅切换音质）
+            const mxid = resolvedMxid || (hash === previousHash ? previousMxid : '');
+            currentSong.value.mxid = mxid;
+
             // 创建歌曲对象
             const song = {
                 id: musicQueueStore.queue.length + 1,
                 hash: hash,
+                mxid: mxid,
                 playHash: selectedCandidate.hash || hash,
                 resolvedQuality: selectedCandidate.quality || '',
                 qualityLabel: getQualityLabel(selectedCandidate.quality),
