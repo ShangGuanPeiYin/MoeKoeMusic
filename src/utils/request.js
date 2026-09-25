@@ -110,6 +110,10 @@ export const get = async (url, params = {}, config = {}, onSuccess = null, onErr
     }
 };
 
+// 静默 GET：绕过风控弹窗，返回原始 axios 响应；供后台任务（如播放历史上报）使用
+export const silentGet = (url, params = {}) =>
+    httpClient.get(url, { params, __rawResponse: true, __skipRisk: true });
+
 // 封装 POST 请求
 export const post = async (url, data = {}, config = {}, onSuccess = null, onError = null) => {
     try {
