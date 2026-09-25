@@ -230,6 +230,18 @@ export const createSettingSections = (t, actions = {}) => computed(() => [
                 showRefreshHint: true,
                 refreshHintText: t('zhong-qi-hou-sheng-xiao'),
                 helpLink: 'https://music.moekoe.cn/guide/data-source.html'
+            },
+            {
+                key: 'uploadPlayHistory',
+                defaultValue: 'off',
+                itemIcon: 'fas fa-cloud-upload-alt',
+                selectionTitle: t('shang-chuan-ting-ge-ji-lu'),
+                options: [
+                    { displayText: t('da-kai'), value: 'on' },
+                    { displayText: t('guan-bi'), value: 'off' }
+                ],
+                label: t('shang-chuan-ting-ge-ji-lu'),
+                icon: '☁️ '
             }
         ]
     },
