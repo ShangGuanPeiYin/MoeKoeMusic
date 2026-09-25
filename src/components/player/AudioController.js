@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 
-export default function useAudioController({ onSongEnd, updateCurrentTime }) {
+export default function useAudioController({ onSongEnd, updateCurrentTime, onPlaybackProgress = null }) {
     const audio = new Audio();
     // 设置 crossOrigin 以支持 Web Audio API 跨域访问
     audio.crossOrigin = 'anonymous';
@@ -233,9 +233,17 @@ export default function useAudioController({ onSongEnd, updateCurrentTime }) {
         audio.addEventListener('pause', handleAudioEvent);
         audio.addEventListener('play', handleAudioEvent);
         audio.addEventListener('timeupdate', updateCurrentTime);
+        audio.addEventListener('timeupdate', handlePlaybackProgress);
 
         console.log('[AudioController] 初始化完成，音量设置为:', audio.volume, 'volume值:', volume.value, '播放速度:', audio.playbackRate);
         console.log('[AudioController] 响度规格化状态:', loudnessNormalizationEnabled.value ? '已启用（将在首次播放时初始化）' : '未启用');
+    };
+
+    // 播放历史上报专用采样：独立于失效的 updateCurrentTime，保证可靠触发
+    const handlePlaybackProgress = () => {
+        if (typeof onPlaybackProgress === 'function') {
+            onPlaybackProgress({ currentTime: audio.currentTime, paused: audio.paused });
+        }
     };
 
     // 处理播放/暂停事件
@@ -317,6 +325,7 @@ export default function useAudioController({ onSongEnd, updateCurrentTime }) {
         audio.removeEventListener('ended', onSongEnd);
         audio.removeEventListener('pause', handleAudioEvent);
         audio.removeEventListener('timeupdate', updateCurrentTime);
+        audio.removeEventListener('timeupdate', handlePlaybackProgress);
 
         // 清理 Web Audio 资源
         if (webAudioInitialized.value) {
