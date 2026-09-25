@@ -284,7 +284,9 @@ import QueueList from './QueueList.vue';
 import FullscreenLyricsSettings from './FullscreenLyricsSettings.vue';
 import { useRouter } from 'vue-router';
 import { getCover, getAudioOutputDeviceSignature, share } from '../utils/utils';
-import { get } from '../utils/request';
+import { get, silentGet } from '../utils/request';
+import { MoeAuthStore } from '../stores/store';
+import { createPlayHistoryReporter } from '../utils/playHistoryReporter';
 import { createTeamEventPopup, actions as teamEventActions } from '@/utils/teamEvent';
 
 // 从统一入口导入所有模块
@@ -308,6 +310,7 @@ const router = useRouter();
 const musicQueueStore = useMusicQueueStore();
 const playlists = ref([]);
 const currentTime = ref(0);
+let playHistoryReporter = null;
 const fullscreenLyricsDefaultSettings = {
     background: 'on',
     fontSize: '24px',
@@ -424,6 +427,7 @@ const switchQuality = async (option) => {
 
 // 初始化事件回调
 const onSongEnd = () => {
+    playHistoryReporter?.endSession();
     if (currentPlaybackModeIndex.value == 2) return; // 单曲循环
     // 顺序播放：最后一首播放完毕后停止
     if (currentPlaybackModeIndex.value == 3) {
@@ -524,8 +528,19 @@ const updateCurrentTime = throttle(() => {
     localStorage.setItem('player_progress', audio.currentTime);
 }, 200);
 
+// 播放历史上报：把 AudioController 的可靠采样转成 reporter.tick
+const handlePlaybackProgress = ({ currentTime: progressTime, paused }) => {
+    if (!playHistoryReporter) return;
+    playHistoryReporter.tick({
+        sessionKey: currentSong.value?.hash || '',
+        mxid: currentSong.value?.mxid || '',
+        currentTime: progressTime,
+        paused,
+    });
+};
+
 // 初始化各个模块
-const audioController = useAudioController({ onSongEnd, updateCurrentTime });
+const audioController = useAudioController({ onSongEnd, updateCurrentTime, onPlaybackProgress: handlePlaybackProgress });
 const { playing, isMuted, volume, changeVolume, audio, playbackRate, setPlaybackRate, applyLoudnessNormalization, ensureAudioContextRunning, toggleLoudnessNormalization, loudnessNormalizationEnabled, currentLoudnessGain, webAudioInitialized, amplitudeToSlider } = audioController;
 const volumePercentText = computed(() => `${Math.round(volume.value)}%`);
 const volumeValueStyle = computed(() => {
@@ -594,6 +609,18 @@ const mediaSession = useMediaSession();
 
 const songQueue = useSongQueue(t, musicQueueStore, queueList);
 const { currentSong, NextSong, addSongToQueue, addCloudMusicToQueue, addLocalMusicToQueue, addLocalPlaylistToQueue, addToNext, getPlaylistAllSongs, addPlaylistToQueue, addCloudPlaylistToQueue, restoreLocalSongCover } = songQueue;
+
+playHistoryReporter = createPlayHistoryReporter({
+    upload: ({ mxid, ot, pc }) => silentGet('/playhistory/upload', { mxid, ot, pc }),
+    isEnabled: () => JSON.parse(localStorage.getItem('settings') || '{}').uploadPlayHistory === 'on',
+    isAuthenticated: () => {
+        try {
+            return !!MoeAuthStore().isAuthenticated;
+        } catch (error) {
+            return false;
+        }
+    },
+});
 
 const resetTrackTimeline = () => {
     currentTime.value = 0;
