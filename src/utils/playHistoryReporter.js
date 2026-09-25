@@ -61,7 +61,20 @@ export function createPlayHistoryReporter({
 
     const tick = (sample) => {
         // 开关关闭或未登录：不累计（并保持时间基线），避免重新开启后补报
-        if (!isEnabled() || !isAuthenticated()) {
+        // 谓词由外部注入，做防御性求值，绝不让异常外抛到播放回调
+        let enabled = false;
+        let authenticated = false;
+        try {
+            enabled = !!isEnabled();
+        } catch (error) {
+            console.warn('[PlayHistory] 开关读取失败:', error?.message || error);
+        }
+        try {
+            authenticated = !!isAuthenticated();
+        } catch (error) {
+            console.warn('[PlayHistory] 登录态读取失败:', error?.message || error);
+        }
+        if (!enabled || !authenticated) {
             state = { ...state, accumulated: 0, reported: false, lastTime: Number(sample.currentTime) || 0 };
             return;
         }
@@ -70,13 +83,13 @@ export function createPlayHistoryReporter({
         state = result.state;
 
         if (result.shouldReport) {
+            if (typeof upload !== 'function') return;
             state = { ...state, reported: true };
             const payload = {
                 mxid: state.mxid,
                 ot: Math.floor(Date.now() / 1000),
                 pc: 1,
             };
-            if (typeof upload !== 'function') return;
             try {
                 const maybePromise = upload(payload);
                 if (maybePromise && typeof maybePromise.catch === 'function') {

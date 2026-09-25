@@ -169,6 +169,7 @@ export default function useLocalMusicQueue(t, musicQueueStore, currentSong, time
             currentSong.value.hash = localHash;
             currentSong.value.qualityLabel = '';
             currentSong.value.qualityOptions = [];
+            currentSong.value.mxid = '';
 
             // 创建本地文件的 URL
             const url = URL.createObjectURL(localFile);

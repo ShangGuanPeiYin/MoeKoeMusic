@@ -90,3 +90,27 @@ test('createPlayHistoryReporter：每会话上报一次，开关关闭时不报'
     for (let t = 0; t <= 31; t += 1) reporter.tick({ sessionKey: 'k2', mxid: '456', currentTime: t, paused: false });
     assert.equal(calls.length, 2);
 });
+
+test('isEnabled/isAuthenticated 抛异常时不上报且不外抛', () => {
+    const calls = [];
+    const reporter = createPlayHistoryReporter({
+        upload: (payload) => calls.push(payload),
+        isEnabled: () => { throw new Error('boom'); },
+        isAuthenticated: () => { throw new Error('boom'); },
+    });
+    assert.doesNotThrow(() => {
+        for (let t = 0; t <= 60; t += 1) reporter.tick({ sessionKey: 'k', mxid: '1', currentTime: t, paused: false });
+    });
+    assert.equal(calls.length, 0);
+});
+
+test('upload 非函数时不抛出', () => {
+    const reporter = createPlayHistoryReporter({
+        upload: undefined,
+        isEnabled: () => true,
+        isAuthenticated: () => true,
+    });
+    assert.doesNotThrow(() => {
+        for (let t = 0; t <= 31; t += 1) reporter.tick({ sessionKey: 'k', mxid: '1', currentTime: t, paused: false });
+    });
+});

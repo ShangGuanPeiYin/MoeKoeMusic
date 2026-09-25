@@ -16,6 +16,7 @@ export default function useCloudMusicQueue(t, musicQueueStore, currentSong, time
             currentSong.value.img = cover;
             currentSong.value.qualityLabel = '';
             currentSong.value.qualityOptions = [];
+            currentSong.value.mxid = '';
 
             console.log('[SongQueue] 获取云盘歌曲:', hash, name);
 
